@@ -11,7 +11,6 @@ sys.path.insert(0, ROOT)
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from mangum import Mangum
 
 from scrapers.dcd import scrape_dcd
 from scrapers.dck import scrape_dck
@@ -49,14 +48,12 @@ def _run_scrapers(sources, days=5, keyword="", region=""):
             except Exception as e:
                 errors.append({"source": key, "error": str(e)})
 
-    # Deduplicate
     seen, unique = set(), []
     for art in all_articles:
         if art["URL"] not in seen:
             seen.add(art["URL"])
             unique.append(art)
 
-    # Filters
     unique = [a for a in unique if is_within_days(a["Date"], days)]
     if keyword:
         unique = [a for a in unique if keyword.lower() in a["Title"].lower()]
@@ -91,7 +88,3 @@ def get_articles(
 @app.get("/")
 def root():
     return {"message": "Data Center News Scraper API — running on Vercel"}
-
-
-# Vercel entry point
-handler = Mangum(app, lifespan="off")
