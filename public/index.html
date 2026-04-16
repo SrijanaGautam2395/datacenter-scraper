@@ -571,12 +571,12 @@
       <div class="section-label">4 · Google Sheets (optional)</div>
       <div class="filter-group">
         <div class="filter-row">
-          <label>Your Google Sheet URL</label>
-          <input type="text" id="sheets-url" placeholder="Paste Google Sheet link here…" style="font-size:11px"/>
+          <label>Apps Script Web App URL</label>
+          <input type="text" id="sheets-url" placeholder="https://script.google.com/…/exec" style="font-size:11px"/>
         </div>
       </div>
       <p style="font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px">
-        Share your sheet with the service account email, then paste the URL above. After scraping, click <strong style="color:var(--text)">Send to Sheets</strong> — rows are appended each time.
+        One-time setup takes 2 min — see the instructions below. After scraping, click <strong style="color:var(--text)">Send to Sheets</strong> to append rows.
       </p>
     </div>
 
@@ -836,29 +836,25 @@
     showToast("✓ CSV downloaded");
   }
 
-  /* ── Send to Google Sheets ────────────────────────── */
+  /* ── Send to Google Sheets (via Apps Script) ──────── */
   async function exportToSheets() {
-    const sheetUrl = document.getElementById("sheets-url").value.trim();
-    if (!sheetUrl) { showToast("⚠️ Paste your Google Sheet URL first", "#f87171"); return; }
+    const scriptUrl = document.getElementById("sheets-url").value.trim();
+    if (!scriptUrl) { showToast("⚠️ Paste your Apps Script Web App URL first", "#f87171"); return; }
+    if (!scriptUrl.includes("script.google.com")) { showToast("⚠️ That doesn't look like an Apps Script URL", "#f87171"); return; }
     if (!allArticles.length) { showToast("⚠️ Scrape first, then send to Sheets", "#f87171"); return; }
-
-    // Extract sheet ID from URL: .../spreadsheets/d/SHEET_ID/...
-    const match = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
-    if (!match) { showToast("⚠️ Invalid Google Sheet URL", "#f87171"); return; }
-    const sheetId = match[1];
 
     const rows = visibleRows();
     showToast("⏳ Sending to Sheets…", "#7c6ef7");
 
     try {
-      const BASE = window.location.hostname === "localhost" ? "http://localhost:8001" : "";
-      const res = await fetch(`${BASE}/api/export-sheets`, {
+      // Use text/plain to skip CORS preflight — Apps Script reads raw body
+      const res = await fetch(scriptUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sheet_id: sheetId, articles: rows }),
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ articles: rows }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Unknown error");
+      if (!data.ok) throw new Error(data.error || "Unknown error");
       showToast(`✓ ${data.appended} rows added to Sheets`);
     } catch (err) {
       showToast(`✗ ${err.message}`, "#f87171");
