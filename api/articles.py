@@ -1,16 +1,18 @@
+import json
 import os
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 # Add project root to Python path so scrapers/ and utils/ are importable
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from scrapers.dcd import scrape_dcd
 from scrapers.dck import scrape_dck
@@ -23,7 +25,7 @@ app = FastAPI(title="Data Center News Scraper API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_methods=["GET"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -83,6 +85,51 @@ def get_articles(
         "articles": articles,
         "errors": errors,
     }
+
+
+class SheetsPayload(BaseModel):
+    sheet_id: str
+    articles: List[Dict[str, Any]]
+
+
+@app.post("/api/export-sheets")
+def export_to_sheets(payload: SheetsPayload):
+    creds_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if not creds_json:
+        raise HTTPException(status_code=500, detail="GOOGLE_SERVICE_ACCOUNT_JSON env var not set on Vercel")
+
+    try:
+        import gspread
+        from google.oauth2.service_account import Credentials
+
+        creds_data = json.loads(creds_json)
+        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+        creds = Credentials.from_service_account_info(creds_data, scopes=scopes)
+        client = gspread.authorize(creds)
+
+        sheet = client.open_by_key(payload.sheet_id).sheet1
+
+        # Add header row if sheet is empty
+        existing = sheet.get_all_values()
+        if not existing:
+            sheet.append_row(["Title", "Date", "Source", "Region", "URL"])
+
+        rows = [
+            [
+                a.get("Title", ""),
+                a.get("Date", ""),
+                a.get("Source", ""),
+                a.get("Region", ""),
+                a.get("URL", ""),
+            ]
+            for a in payload.articles
+        ]
+        sheet.append_rows(rows, value_input_option="USER_ENTERED")
+
+        return {"appended": len(rows)}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/")

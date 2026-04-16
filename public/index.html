@@ -566,6 +566,20 @@
       </button>
     </div>
 
+    <!-- Google Sheets -->
+    <div>
+      <div class="section-label">4 · Google Sheets (optional)</div>
+      <div class="filter-group">
+        <div class="filter-row">
+          <label>Your Google Sheet URL</label>
+          <input type="text" id="sheets-url" placeholder="Paste Google Sheet link here…" style="font-size:11px"/>
+        </div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);line-height:1.6;margin-top:8px">
+        Share your sheet with the service account email, then paste the URL above. After scraping, click <strong style="color:var(--text)">Send to Sheets</strong> — rows are appended each time.
+      </p>
+    </div>
+
   </aside>
 
   <!-- ── RESULTS ─────────────────────────────────────── -->
@@ -599,6 +613,10 @@
         <button class="btn-small" onclick="exportCSV()">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Export CSV
+        </button>
+        <button class="btn-small" onclick="exportToSheets()" style="background:var(--green);color:#000;border-color:var(--green)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          Send to Sheets
         </button>
       </div>
     </div>
@@ -789,23 +807,62 @@
   }
 
   /* ── Export CSV ───────────────────────────────────── */
-  function exportCSV() {
-    if (!allArticles.length) return;
+  function visibleRows() {
     const liveQuery = (document.getElementById("live-search")?.value || "").toLowerCase();
-    const rows = allArticles.filter(a =>
+    return allArticles.filter(a =>
       (activeSource === "all" || a.Source === activeSource) &&
       (!liveQuery || a.Title.toLowerCase().includes(liveQuery))
     );
-    const header = ["Title","Date","Source","URL"];
-    const csv = [header, ...rows.map(a => [a.Title, a.Date, a.Source, a.URL])]
-      .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(","))
+  }
+
+  function exportCSV() {
+    if (!allArticles.length) return;
+    const rows = visibleRows();
+    const header = ["Title", "Date", "Source", "Region", "URL"];
+    const csv = [header, ...rows.map(a => [
+      a.Title,
+      fmtDate(a.Date),        // "Apr 16, 2026" — readable in Excel
+      a.Source,
+      a.Region || "",
+      a.URL,
+    ])]
+      .map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(","))
       .join("\n");
     const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `datacenter_news_${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `datacenter_news_${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     showToast("✓ CSV downloaded");
+  }
+
+  /* ── Send to Google Sheets ────────────────────────── */
+  async function exportToSheets() {
+    const sheetUrl = document.getElementById("sheets-url").value.trim();
+    if (!sheetUrl) { showToast("⚠️ Paste your Google Sheet URL first", "#f87171"); return; }
+    if (!allArticles.length) { showToast("⚠️ Scrape first, then send to Sheets", "#f87171"); return; }
+
+    // Extract sheet ID from URL: .../spreadsheets/d/SHEET_ID/...
+    const match = sheetUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (!match) { showToast("⚠️ Invalid Google Sheet URL", "#f87171"); return; }
+    const sheetId = match[1];
+
+    const rows = visibleRows();
+    showToast("⏳ Sending to Sheets…", "#7c6ef7");
+
+    try {
+      const BASE = window.location.hostname === "localhost" ? "http://localhost:8001" : "";
+      const res = await fetch(`${BASE}/api/export-sheets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sheet_id: sheetId, articles: rows }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Unknown error");
+      showToast(`✓ ${data.appended} rows added to Sheets`);
+    } catch (err) {
+      showToast(`✗ ${err.message}`, "#f87171");
+    }
   }
 
   /* ── UI helpers ───────────────────────────────────── */
