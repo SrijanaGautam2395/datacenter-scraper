@@ -25,6 +25,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
 
 from scrapers.dcd import scrape_dcd
 from scrapers.dck import scrape_dck
@@ -159,3 +160,7 @@ def root():
             "GET /api/articles/cached": "Return last cached result",
         },
     }
+
+
+# Vercel serverless handler (wraps FastAPI as AWS Lambda-compatible ASGI handler)
+handler = Mangum(app, lifespan="off")
