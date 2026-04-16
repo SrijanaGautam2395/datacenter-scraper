@@ -543,6 +543,17 @@
           <input type="text" id="filter-keyword" placeholder="e.g. nvidia, aws, cooling" />
         </div>
 
+        <div class="filter-row">
+          <label>Region — DCD only (optional)</label>
+          <select id="filter-region">
+            <option value="">All Regions</option>
+            <option value="North America">North America</option>
+            <option value="Europe">Europe</option>
+            <option value="Middle East">Middle East</option>
+            <option value="Asia Pacific">Asia Pacific</option>
+          </select>
+        </div>
+
       </div>
     </div>
 
@@ -659,9 +670,11 @@
 
     const days    = document.getElementById("filter-days").value;
     const keyword = document.getElementById("filter-keyword").value.trim();
+    const region  = document.getElementById("filter-region").value;
 
     const params = new URLSearchParams({ source: checked.join(","), days });
     if (keyword) params.set("keyword", keyword);
+    if (region)  params.set("region", region);
 
     setBusy(true);
     showLoading();
@@ -737,6 +750,7 @@
             <tr>
               <th onclick="setSort('Title')"   class="${sortCol==='Title'?'sorted':''}">Title <span class="sort-arrow">${sortCol==='Title'?(sortDir===-1?'↓':'↑'):'↕'}</span></th>
               <th onclick="setSort('Source')"  class="${sortCol==='Source'?'sorted':''}">Source <span class="sort-arrow">${sortCol==='Source'?(sortDir===-1?'↓':'↑'):'↕'}</span></th>
+              <th onclick="setSort('Region')"  class="${sortCol==='Region'?'sorted':''}">Region <span class="sort-arrow">${sortCol==='Region'?(sortDir===-1?'↓':'↑'):'↕'}</span></th>
               <th onclick="setSort('Date')"    class="${sortCol==='Date'?'sorted':''}">Date <span class="sort-arrow">${sortCol==='Date'?(sortDir===-1?'↓':'↑'):'↕'}</span></th>
               <th>Link</th>
             </tr>
@@ -746,6 +760,7 @@
               <tr style="animation-delay:${i * 20}ms">
                 <td class="td-title"><a href="${esc(a.URL)}" target="_blank" rel="noopener">${esc(a.Title)}</a></td>
                 <td><span class="badge ${badgeCls[a.Source]||''}">${shortLabel[a.Source]||a.Source}</span></td>
+                <td style="font-size:12px;color:var(--muted);white-space:nowrap">${a.Region || '—'}</td>
                 <td class="td-date">${fmtDate(a.Date)}</td>
                 <td><a class="ext-link" href="${esc(a.URL)}" target="_blank" rel="noopener">
                   Open ↗

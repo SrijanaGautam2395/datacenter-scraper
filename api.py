@@ -47,7 +47,7 @@ SOURCE_MAP = {
 }
 
 
-def _run_scrapers(sources: list[str], days: int = 5, keyword: str = "") -> list[dict]:
+def _run_scrapers(sources: list[str], days: int = 5, keyword: str = "", region: str = "") -> list[dict]:
     """Run selected scrapers IN PARALLEL and return deduplicated, filtered articles."""
     all_articles = []
     errors = []
@@ -83,6 +83,10 @@ def _run_scrapers(sources: list[str], days: int = 5, keyword: str = "") -> list[
         kw = keyword.lower()
         unique = [a for a in unique if kw in a["Title"].lower()]
 
+    # Apply region filter (only affects DCD articles that carry a Region field)
+    if region:
+        unique = [a for a in unique if a.get("Region", "") == region or a.get("Source") != "DataCenterDynamics"]
+
     # Sort newest first
     unique.sort(key=lambda x: x["Date"], reverse=True)
     return unique, errors
@@ -95,6 +99,7 @@ def get_articles(
     source: Optional[str] = Query(default=None, description="dcd,dck,dcf,dcm (comma-separated). Omit for all."),
     days: int = Query(default=5, ge=1, le=30, description="Only articles published within last N days."),
     keyword: Optional[str] = Query(default=None, description="Filter articles whose title contains this keyword."),
+    region: Optional[str] = Query(default=None, description="Filter DCD articles by region: North America, Europe, Middle East, Asia Pacific"),
 ):
     """
     Scrape and return articles as JSON.
@@ -112,7 +117,7 @@ def get_articles(
     else:
         sources = list(SOURCE_MAP.keys())
 
-    articles, errors = _run_scrapers(sources, days=days, keyword=keyword or "")
+    articles, errors = _run_scrapers(sources, days=days, keyword=keyword or "", region=region or "")
 
     # Update cache
     _cache["articles"] = articles

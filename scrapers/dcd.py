@@ -14,7 +14,7 @@ import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
 
-from utils.filters import is_within_days, passes_region_filter
+from utils.filters import is_within_days, passes_region_filter, detect_region
 
 BASE_URL = "https://www.datacenterdynamics.com"
 LISTING_URL = f"{BASE_URL}/en/news/"
@@ -73,8 +73,9 @@ def scrape_dcd() -> list[dict]:
             if not is_within_days(date_str):
                 continue
 
-            # Apply region filter (keyword-based on title)
-            if not passes_region_filter(title):
+            # Detect region (keyword-based on title); skip if no match
+            region = detect_region(title)
+            if not region:
                 continue
 
             results.append({
@@ -82,6 +83,7 @@ def scrape_dcd() -> list[dict]:
                 "Date": date_str,
                 "Source": "DataCenterDynamics",
                 "URL": url,
+                "Region": region,
             })
 
         except Exception as e:
