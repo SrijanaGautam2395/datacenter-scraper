@@ -1,23 +1,6 @@
 {
-  "builds": [
-    {
-      "src": "api.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "15mb",
-        "includeFiles": [
-          "scrapers/**",
-          "utils/**"
-        ]
-      }
-    },
-    {
-      "src": "frontend/index.html",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    { "src": "/api/(.*)", "dest": "api.py" },
-    { "src": "/(.*)",     "dest": "frontend/index.html" }
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/articles" },
+    { "source": "/(.*)",       "destination": "/public/index.html" }
   ]
 }

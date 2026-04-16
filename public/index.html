@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Data Center News Scraper</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0f1a;
+      --panel:    #13162a;
+      --card:     #1a1e35;
+      --border:   #252a45;
+      --accent:   #7c6ef7;
+      --accent-h: #6356e0;
+      --text:     #dde3f5;
+      --muted:    #7a83a6;
+      --green:    #3ecf8e;
+      --red:      #f87171;
+      --yellow:   #fbbf24;
+
+      --dcd: #7c6ef7;
+      --dck: #f59e0b;
+      --dcf: #10b981;
+      --dcm: #38bdf8;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── TOP NAV ── */
+    nav {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+
+    nav .nav-icon {
+      background: linear-gradient(135deg, var(--accent), #a78bfa);
+      border-radius: 10px;
+      width: 34px; height: 34px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; flex-shrink: 0;
+    }
+
+    nav .nav-title { font-size: 16px; font-weight: 700; }
+    nav .nav-sub   { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+    /* ── PAGE LAYOUT ── */
+    .page {
+      display: flex;
+      gap: 0;
+      min-height: calc(100vh - 63px);
+    }
+
+    /* ── LEFT PANEL (config) ── */
+    .sidebar {
+      width: 300px;
+      flex-shrink: 0;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 24px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      overflow-y: auto;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+
+    /* Website checkboxes */
+    .site-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .site-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+      user-select: none;
+    }
+    .site-item:hover { border-color: var(--accent); }
+    .site-item.checked { border-color: var(--accent); background: rgba(124,110,247,0.08); }
+
+    .site-item input[type=checkbox] { display: none; }
+
+    .site-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .site-info { flex: 1; min-width: 0; }
+    .site-name { font-size: 13px; font-weight: 600; }
+    .site-url  { font-size: 10px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .check-icon {
+      width: 18px; height: 18px;
+      border-radius: 5px;
+      border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+    .site-item.checked .check-icon {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    /* Filters */
+    .filter-group { display: flex; flex-direction: column; gap: 10px; }
+
+    .filter-row { display: flex; flex-direction: column; gap: 5px; }
+
+    .filter-row label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .filter-row input,
+    .filter-row select {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .filter-row input::placeholder { color: var(--muted); }
+    .filter-row input:focus,
+    .filter-row select:focus { border-color: var(--accent); }
+    .filter-row select option { background: var(--card); }
+
+    /* Scrape button */
+    .scrape-btn {
+      width: 100%;
+      padding: 13px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.15s, transform 0.1s;
+      letter-spacing: 0.2px;
+    }
+    .scrape-btn:hover:not(:disabled) { background: var(--accent-h); }
+    .scrape-btn:active:not(:disabled) { transform: scale(0.98); }
+    .scrape-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* Select all link */
+    .select-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+    .select-actions a {
+      font-size: 11px;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .select-actions a:hover { text-decoration: underline; }
+
+    /* ── RIGHT PANEL (results) ── */
+    .results {
+      flex: 1;
+      min-width: 0;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Stats row */
+    .stats {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .stat {
+      flex: 1;
+      min-width: 110px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .stat-val   { font-size: 24px; font-weight: 800; margin-top: 2px; line-height: 1; }
+
+    /* Result toolbar */
+    .result-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .result-info { font-size: 12px; color: var(--muted); }
+    .result-info strong { color: var(--text); }
+
+    .toolbar-right { display: flex; gap: 8px; align-items: center; }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px;
+    }
+    .search-box input {
+      background: none;
+      border: none;
+      outline: none;
+      color: var(--text);
+      font-size: 12px;
+      width: 160px;
+    }
+    .search-box input::placeholder { color: var(--muted); }
+
+    .btn-small {
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: border-color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-small:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Source filter pills */
+    .pills { display: flex; gap: 6px; flex-wrap: wrap; }
+
+    .pill {
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+    .pill:hover { border-color: var(--accent); color: var(--text); }
+    .pill.active { color: #fff; border-color: transparent; }
+    .pill[data-f="all"].active                   { background: var(--accent); }
+    .pill[data-f="DataCenterDynamics"].active    { background: var(--dcd); }
+    .pill[data-f="DataCenterKnowledge"].active   { background: var(--dck); }
+    .pill[data-f="DataCenterFrontier"].active    { background: var(--dcf); }
+    .pill[data-f="DataCentre Magazine"].active   { background: var(--dcm); }
+
+    /* ── TABLE ── */
+    .table-wrap {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--card);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      padding: 10px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    th:hover { color: var(--text); }
+    th .sort-arrow { margin-left: 4px; opacity: 0.4; }
+    th.sorted .sort-arrow { opacity: 1; color: var(--accent); }
+
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+      animation: rowIn 0.25s ease both;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(124,110,247,0.06); }
+
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateX(-6px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    td {
+      padding: 11px 16px;
+      font-size: 13px;
+      vertical-align: middle;
+    }
+
+    .td-title { max-width: 420px; }
+    .td-title a {
+      color: var(--text);
+      text-decoration: none;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .td-title a:hover { color: var(--accent); }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 3px 9px;
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .b-dcd { background: rgba(124,110,247,.15); color: var(--dcd); }
+    .b-dck { background: rgba(245,158,11,.15);  color: var(--dck); }
+    .b-dcf { background: rgba(16,185,129,.15);  color: var(--dcf); }
+    .b-dcm { background: rgba(56,189,248,.15);  color: var(--dcm); }
+
+    .td-date { color: var(--muted); white-space: nowrap; font-size: 12px; }
+
+    .ext-link {
+      color: var(--muted);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      transition: color 0.15s;
+    }
+    .ext-link:hover { color: var(--accent); }
+
+    /* ── EMPTY / LOADING / ERROR ── */
+    .state-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 70px 20px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .state-box .emoji { font-size: 44px; }
+    .state-box p { font-size: 15px; color: var(--text); }
+    .state-box small { font-size: 12px; line-height: 1.6; }
+
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── SCRAPING PROGRESS ── */
+    .progress-bar-wrap {
+      background: var(--border);
+      border-radius: 4px;
+      height: 4px;
+      overflow: hidden;
+      width: 200px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 4px;
+      animation: progress 8s ease-out forwards;
+    }
+    @keyframes progress { from { width: 0%; } to { width: 90%; } }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 24px; right: 24px;
+      background: var(--green);
+      color: #000;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.25s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; transform: translateY(0); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .page { flex-direction: column; }
+      .sidebar { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+      .td-date, th:nth-child(4), td:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-icon">🔍</div>
+  <div>
+    <div class="nav-title">Data Center News Scraper</div>
+    <div class="nav-sub">Select websites · Set filters · Click Scrape</div>
+  </div>
+</nav>
+
+<div class="page">
+
+  <!-- ── SIDEBAR ─────────────────────────────────────── -->
+  <aside class="sidebar">
+
+    <!-- Websites -->
+    <div>
+      <div class="section-label">1 · Choose Websites</div>
+      <div class="select-actions">
+        <a onclick="selectAll(true)">Select All</a>
+        <a onclick="selectAll(false)">Clear All</a>
+      </div>
+      <div class="site-list" id="site-list">
+
+        <label class="site-item checked" data-key="dcd">
+          <input type="checkbox" value="dcd" checked />
+          <span class="site-dot" style="background:var(--dcd)"></span>
+          <div class="site-info">
+            <div class="site-name">DataCenterDynamics</div>
+            <div class="site-url">datacenterdynamics.com</div>
+          </div>
+          <div class="check-icon">✓</div>
+        </label>
+
+        <label class="site-item checked" data-key="dck">
+          <input type="checkbox" value="dck" checked />
+          <span class="site-dot" style="background:var(--dck)"></span>
+          <div class="site-info">
+            <div class="site-name">DataCenterKnowledge</div>
+            <div class="site-url">datacenterknowledge.com</div>
+          </div>
+          <div class="check-icon">✓</div>
+        </label>
+
+        <label class="site-item checked" data-key="dcf">
+          <input type="checkbox" value="dcf" checked />
+          <span class="site-dot" style="background:var(--dcf)"></span>
+          <div class="site-info">
+            <div class="site-name">DataCenterFrontier</div>
+            <div class="site-url">datacenterfrontier.com</div>
+          </div>
+          <div class="check-icon">✓</div>
+        </label>
+
+        <label class="site-item checked" data-key="dcm">
+          <input type="checkbox" value="dcm" checked />
+          <span class="site-dot" style="background:var(--dcm)"></span>
+          <div class="site-info">
+            <div class="site-name">DataCentre Magazine</div>
+            <div class="site-url">datacentremagazine.com</div>
+          </div>
+          <div class="check-icon">✓</div>
+        </label>
+
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div>
+      <div class="section-label">2 · Set Filters</div>
+      <div class="filter-group">
+
+        <div class="filter-row">
+          <label>Date Range</label>
+          <select id="filter-days">
+            <option value="1">Last 1 day</option>
+            <option value="3">Last 3 days</option>
+            <option value="5" selected>Last 5 days</option>
+            <option value="7">Last 7 days</option>
+            <option value="14">Last 14 days</option>
+            <option value="30">Last 30 days</option>
+          </select>
+        </div>
+
+        <div class="filter-row">
+          <label>Keyword in Title (optional)</label>
+          <input type="text" id="filter-keyword" placeholder="e.g. nvidia, aws, cooling" />
+        </div>
+
+        <div class="filter-row">
+          <label>Region — DCD only (optional)</label>
+          <select id="filter-region">
+            <option value="">All Regions</option>
+            <option value="North America">North America</option>
+            <option value="Europe">Europe</option>
+            <option value="Middle East">Middle East</option>
+            <option value="Asia Pacific">Asia Pacific</option>
+          </select>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Scrape Button -->
+    <div>
+      <div class="section-label">3 · Run</div>
+      <button class="scrape-btn" id="scrape-btn" onclick="runScrape()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Scrape Now
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- ── RESULTS ─────────────────────────────────────── -->
+  <main class="results">
+
+    <!-- Stats -->
+    <div class="stats" id="stats">
+      <div class="stat"><div class="stat-label">Total</div><div class="stat-val" id="s-total" style="color:var(--text)">–</div></div>
+      <div class="stat"><div class="stat-label">DCD</div><div class="stat-val" id="s-dcd" style="color:var(--dcd)">–</div></div>
+      <div class="stat"><div class="stat-label">DCK</div><div class="stat-val" id="s-dck" style="color:var(--dck)">–</div></div>
+      <div class="stat"><div class="stat-label">DCF</div><div class="stat-val" id="s-dcf" style="color:var(--dcf)">–</div></div>
+      <div class="stat"><div class="stat-label">DCM</div><div class="stat-val" id="s-dcm" style="color:var(--dcm)">–</div></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div class="result-toolbar" id="toolbar" style="display:none">
+      <div>
+        <div class="pills">
+          <div class="pill active" data-f="all"                  onclick="filterBySource('all')">All</div>
+          <div class="pill"        data-f="DataCenterDynamics"   onclick="filterBySource('DataCenterDynamics')">DCD</div>
+          <div class="pill"        data-f="DataCenterKnowledge"  onclick="filterBySource('DataCenterKnowledge')">DCK</div>
+          <div class="pill"        data-f="DataCenterFrontier"   onclick="filterBySource('DataCenterFrontier')">DCF</div>
+          <div class="pill"        data-f="DataCentre Magazine"  onclick="filterBySource('DataCentre Magazine')">DCM</div>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <div class="search-box">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--muted)"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" id="live-search" placeholder="Search results…" oninput="renderTable()"/>
+        </div>
+        <button class="btn-small" onclick="exportCSV()">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export CSV
+        </button>
+      </div>
+    </div>
+
+    <!-- Result count -->
+    <div id="result-count" style="font-size:12px;color:var(--muted);display:none;"></div>
+
+    <!-- Table / State area -->
+    <div id="content-area">
+      <div class="state-box">
+        <div class="emoji">⚙️</div>
+        <p>Configure and click Scrape Now</p>
+        <small>Select the websites you want to scrape,<br/>set your filters, then hit the button.</small>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // Works automatically on Vercel (same domain) and locally on port 8001
+  const API = window.location.hostname === "localhost"
+    ? "http://localhost:8001/api/articles"
+    : "/api/articles";
+
+  let allArticles   = [];
+  let activeSource  = "all";
+  let sortCol       = "Date";
+  let sortDir       = -1; // -1 = desc
+
+  const badgeCls = {
+    "DataCenterDynamics":  "b-dcd",
+    "DataCenterKnowledge": "b-dck",
+    "DataCenterFrontier":  "b-dcf",
+    "DataCentre Magazine": "b-dcm",
+  };
+
+  const shortLabel = {
+    "DataCenterDynamics":  "DCD",
+    "DataCenterKnowledge": "DCK",
+    "DataCenterFrontier":  "DCF",
+    "DataCentre Magazine": "DCM",
+  };
+
+  /* ── Site checkbox toggle ─────────────────────────── */
+  document.getElementById("site-list").addEventListener("click", e => {
+    const item = e.target.closest(".site-item");
+    if (!item) return;
+    const cb = item.querySelector("input[type=checkbox]");
+    cb.checked = !cb.checked;
+    item.classList.toggle("checked", cb.checked);
+  });
+
+  function selectAll(state) {
+    document.querySelectorAll(".site-item").forEach(item => {
+      const cb = item.querySelector("input[type=checkbox]");
+      cb.checked = state;
+      item.classList.toggle("checked", state);
+    });
+  }
+
+  /* ── Run scrape ───────────────────────────────────── */
+  async function runScrape() {
+    const checked = [...document.querySelectorAll(".site-item input:checked")].map(c => c.value);
+    if (checked.length === 0) { showToast("⚠️ Select at least one website", "#f87171"); return; }
+
+    const days    = document.getElementById("filter-days").value;
+    const keyword = document.getElementById("filter-keyword").value.trim();
+    const region  = document.getElementById("filter-region").value;
+
+    const params = new URLSearchParams({ source: checked.join(","), days });
+    if (keyword) params.set("keyword", keyword);
+    if (region)  params.set("region", region);
+
+    setBusy(true);
+    showLoading();
+
+    try {
+      const res = await fetch(`${API}?${params}`);
+      if (!res.ok) throw new Error(`API returned ${res.status}`);
+      const data = await res.json();
+
+      allArticles  = data.articles || [];
+      activeSource = "all";
+      document.querySelectorAll(".pill").forEach(p => p.classList.toggle("active", p.dataset.f === "all"));
+      document.getElementById("live-search").value = "";
+
+      updateStats(data);
+      renderTable();
+
+      document.getElementById("toolbar").style.display = "flex";
+      showToast(`✓ ${allArticles.length} articles scraped`);
+
+      if (data.errors?.length) {
+        data.errors.forEach(e => console.warn("[Scraper error]", e));
+      }
+
+    } catch (err) {
+      showError(err.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /* ── Filter by source pill ────────────────────────── */
+  function filterBySource(src) {
+    activeSource = src;
+    document.querySelectorAll(".pill").forEach(p => p.classList.toggle("active", p.dataset.f === src));
+    renderTable();
+  }
+
+  /* ── Render table ─────────────────────────────────── */
+  function renderTable() {
+    const liveQuery = (document.getElementById("live-search")?.value || "").toLowerCase();
+
+    let rows = allArticles.filter(a => {
+      const matchSrc = activeSource === "all" || a.Source === activeSource;
+      const matchQ   = !liveQuery || a.Title.toLowerCase().includes(liveQuery) || a.Source.toLowerCase().includes(liveQuery);
+      return matchSrc && matchQ;
+    });
+
+    // Sort
+    rows = [...rows].sort((a, b) => {
+      let va = a[sortCol] ?? "", vb = b[sortCol] ?? "";
+      return va < vb ? sortDir : va > vb ? -sortDir : 0;
+    });
+
+    const count = document.getElementById("result-count");
+    count.style.display = "block";
+    count.innerHTML = `Showing <strong style="color:var(--text)">${rows.length}</strong> of <strong style="color:var(--text)">${allArticles.length}</strong> articles`;
+
+    if (rows.length === 0) {
+      document.getElementById("content-area").innerHTML = `
+        <div class="state-box">
+          <div class="emoji">🔍</div>
+          <p>No articles match</p>
+          <small>Try adjusting your source filter or search term.</small>
+        </div>`;
+      return;
+    }
+
+    document.getElementById("content-area").innerHTML = `
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th onclick="setSort('Title')"   class="${sortCol==='Title'?'sorted':''}">Title <span class="sort-arrow">${sortCol==='Title'?(sortDir===-1?'↓':'↑'):'↕'}</span></th>
+              <th onclick="setSort('Source')"  class="${sortCol==='Source'?'sorted':''}">Source <span class="sort-arrow">${sortCol==='Source'?(sortDir===-1?'↓':'↑'):'↕'}</span></th>
+              <th onclick="setSort('Region')"  class="${sortCol==='Region'?'sorted':''}">Region <span class="sort-arrow">${sortCol==='Region'?(sortDir===-1?'↓':'↑'):'↕'}</span></th>
+              <th onclick="setSort('Date')"    class="${sortCol==='Date'?'sorted':''}">Date <span class="sort-arrow">${sortCol==='Date'?(sortDir===-1?'↓':'↑'):'↕'}</span></th>
+              <th>Link</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((a, i) => `
+              <tr style="animation-delay:${i * 20}ms">
+                <td class="td-title"><a href="${esc(a.URL)}" target="_blank" rel="noopener">${esc(a.Title)}</a></td>
+                <td><span class="badge ${badgeCls[a.Source]||''}">${shortLabel[a.Source]||a.Source}</span></td>
+                <td style="font-size:12px;color:var(--muted);white-space:nowrap">${a.Region || '—'}</td>
+                <td class="td-date">${fmtDate(a.Date)}</td>
+                <td><a class="ext-link" href="${esc(a.URL)}" target="_blank" rel="noopener">
+                  Open ↗
+                </a></td>
+              </tr>`).join("")}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  function setSort(col) {
+    if (sortCol === col) sortDir *= -1;
+    else { sortCol = col; sortDir = -1; }
+    renderTable();
+  }
+
+  /* ── Stats ────────────────────────────────────────── */
+  function updateStats(data) {
+    const c = { DataCenterDynamics:0, DataCenterKnowledge:0, DataCenterFrontier:0, "DataCentre Magazine":0 };
+    (data.articles||[]).forEach(a => { if(c[a.Source]!==undefined) c[a.Source]++; });
+    document.getElementById("s-total").textContent = data.count ?? 0;
+    document.getElementById("s-dcd").textContent   = c["DataCenterDynamics"];
+    document.getElementById("s-dck").textContent   = c["DataCenterKnowledge"];
+    document.getElementById("s-dcf").textContent   = c["DataCenterFrontier"];
+    document.getElementById("s-dcm").textContent   = c["DataCentre Magazine"];
+  }
+
+  /* ── Export CSV ───────────────────────────────────── */
+  function exportCSV() {
+    if (!allArticles.length) return;
+    const liveQuery = (document.getElementById("live-search")?.value || "").toLowerCase();
+    const rows = allArticles.filter(a =>
+      (activeSource === "all" || a.Source === activeSource) &&
+      (!liveQuery || a.Title.toLowerCase().includes(liveQuery))
+    );
+    const header = ["Title","Date","Source","URL"];
+    const csv = [header, ...rows.map(a => [a.Title, a.Date, a.Source, a.URL])]
+      .map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `datacenter_news_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    showToast("✓ CSV downloaded");
+  }
+
+  /* ── UI helpers ───────────────────────────────────── */
+  function setBusy(b) {
+    const btn = document.getElementById("scrape-btn");
+    btn.disabled = b;
+    btn.innerHTML = b
+      ? `<div style="width:14px;height:14px;border:2.5px solid #fff4;border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite"></div> Scraping…`
+      : `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Scrape Now`;
+  }
+
+  function showLoading() {
+    document.getElementById("toolbar").style.display = "none";
+    document.getElementById("result-count").style.display = "none";
+    document.getElementById("content-area").innerHTML = `
+      <div class="state-box">
+        <div class="spinner"></div>
+        <p>Scraping websites…</p>
+        <div class="progress-bar-wrap"><div class="progress-bar"></div></div>
+        <small>Fetching articles from selected sources.<br/>This takes about 8–10 seconds.</small>
+      </div>`;
+  }
+
+  function showError(msg) {
+    document.getElementById("content-area").innerHTML = `
+      <div class="state-box">
+        <div class="emoji">⚠️</div>
+        <p>Could not connect to API server</p>
+        <small>
+          Make sure the server is running:<br/>
+          <code style="background:var(--border);padding:4px 8px;border-radius:5px;display:inline-block;margin-top:6px">
+            py -m uvicorn api:app --port 8000
+          </code><br/><br/>
+          Error: ${esc(msg)}
+        </small>
+      </div>`;
+  }
+
+  let toastTimer;
+  function showToast(msg, bg = "var(--green)") {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.style.background = bg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 3000);
+  }
+
+  function fmtDate(d) {
+    if (!d || d === "N/A") return "N/A";
+    try { return new Date(d).toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" }); }
+    catch { return d; }
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+</script>
+</body>
+</html>
