@@ -13,10 +13,15 @@ Then call from frontend:
   fetch("http://localhost:8000/api/articles")
 """
 
+import os
+import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from typing import Optional
+
+# Ensure project root is on Python path (required for Vercel serverless)
+sys.path.insert(0, os.path.dirname(__file__))
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
