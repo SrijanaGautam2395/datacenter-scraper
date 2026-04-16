@@ -855,7 +855,10 @@
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || "Unknown error");
-      showToast(`✓ ${data.appended} rows added to Sheets`);
+      const msg = data.skipped > 0
+        ? `✓ ${data.appended} new rows added · ${data.skipped} duplicates skipped`
+        : `✓ ${data.appended} rows added to Sheets`;
+      showToast(msg);
     } catch (err) {
       showToast(`✗ ${err.message}`, "#f87171");
     }
