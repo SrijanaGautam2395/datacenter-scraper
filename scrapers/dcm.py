@@ -99,6 +99,7 @@ def scrape_dcm() -> list[dict]:
             oid = art.get("_id", "")
             headline = art.get("headline", "")
             full_path = art.get("fullUrlPath", "")
+            subtitle = art.get("subtitle", "") or art.get("teaserText", "") or art.get("summary", "") or ""
 
             if not headline or not full_path or not oid:
                 continue
@@ -118,7 +119,7 @@ def scrape_dcm() -> list[dict]:
                 "Title": headline,
                 "Date": date_str,
                 "Source": "DataCentre Magazine",
-                "Region": detect_region(headline) or "",
+                "Region": detect_region(headline, subtitle, full_path) or "",
                 "URL": url,
             })
 

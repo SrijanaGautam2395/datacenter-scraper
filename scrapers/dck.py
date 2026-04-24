@@ -46,12 +46,14 @@ def scrape_dck() -> list[dict]:
             title_tag = item.find("title")
             link_tag = item.find("link")
             pubdate_tag = item.find("pubDate")
+            desc_tag = item.find("description")
 
             if not title_tag or not link_tag:
                 continue
 
             title = title_tag.get_text(strip=True)
             url = link_tag.get_text(strip=True)
+            description = desc_tag.get_text(strip=True) if desc_tag else ""
 
             # Normalize date to YYYY-MM-DD
             if pubdate_tag and pubdate_tag.get_text(strip=True):
@@ -71,7 +73,7 @@ def scrape_dck() -> list[dict]:
                 "Title": title,
                 "Date": date_str,
                 "Source": "DataCenterKnowledge",
-                "Region": detect_region(title) or "",
+                "Region": detect_region(title, description, url) or "",
                 "URL": url,
             })
 

@@ -57,14 +57,15 @@ REGION_KEYWORDS = {
 ALLOWED_REGIONS = set(REGION_KEYWORDS.keys())
 
 
-def detect_region(title: str) -> str | None:
+def detect_region(*texts: str) -> str | None:
     """
-    Detect region from article title via keyword matching.
+    Detect region from one or more text strings (title, description, URL, body)
+    via keyword matching. Checks all provided texts.
     Returns region name if matched, else None.
     """
-    title_lower = title.lower()
+    combined = " ".join(t for t in texts if t).lower()
     for region, keywords in REGION_KEYWORDS.items():
-        if any(kw in title_lower for kw in keywords):
+        if any(kw in combined for kw in keywords):
             return region
     return None
 

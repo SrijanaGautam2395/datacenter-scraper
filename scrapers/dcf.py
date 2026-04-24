@@ -86,12 +86,19 @@ def _fetch_article_details(url: str) -> dict | None:
         print(f"  [DCF] Cloudflare blocked: {url}")
         return None
 
+    # Extract body text for region detection
+    body_text = ""
+    article_body = soup.find("div", class_="article-body") or soup.find("article") or soup.find("div", class_="content")
+    if article_body:
+        body_text = article_body.get_text(" ", strip=True)[:500]  # first 500 chars is enough
+
     # Primary: JSON-LD NewsArticle schema
     for script in soup.find_all("script", type="application/ld+json"):
         try:
             ld = json.loads(script.string or "")
             if isinstance(ld, dict) and ld.get("@type") in ("NewsArticle", "Article"):
                 title = ld.get("headline", "")
+                desc = ld.get("description", "")
                 date_str = ld.get("datePublished", "N/A")
                 if date_str and date_str != "N/A":
                     try:
@@ -99,7 +106,7 @@ def _fetch_article_details(url: str) -> dict | None:
                     except Exception:
                         date_str = "N/A"
                 if title:
-                    return {"title": title, "date": date_str, "url": url}
+                    return {"title": title, "date": date_str, "url": url, "extra_text": f"{desc} {body_text}"}
         except Exception:
             continue
 
@@ -126,7 +133,7 @@ def _fetch_article_details(url: str) -> dict | None:
             date_str = "N/A"
 
     if title:
-        return {"title": title, "date": date_str, "url": url}
+        return {"title": title, "date": date_str, "url": url, "extra_text": body_text}
     return None
 
 
@@ -154,7 +161,7 @@ def scrape_dcf() -> list[dict]:
             "Title": details["title"],
             "Date": details["date"],
             "Source": "DataCenterFrontier",
-            "Region": detect_region(details["title"]) or "",
+            "Region": detect_region(details["title"], details.get("extra_text", ""), details["url"]) or "",
             "URL": details["url"],
         })
 

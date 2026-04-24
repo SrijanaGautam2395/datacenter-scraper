@@ -73,17 +73,15 @@ def scrape_dcd() -> list[dict]:
             if not is_within_days(date_str):
                 continue
 
-            # Detect region (keyword-based on title); skip if no match
-            region = detect_region(title)
-            if not region:
-                continue
+            # Detect region from title + URL slug
+            region = detect_region(title, url)
 
             results.append({
                 "Title": title,
                 "Date": date_str,
                 "Source": "DataCenterDynamics",
                 "URL": url,
-                "Region": region,
+                "Region": region or "",
             })
 
         except Exception as e:
