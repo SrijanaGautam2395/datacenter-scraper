@@ -650,6 +650,13 @@
   let sortCol       = "Date";
   let sortDir       = -1; // -1 = desc
 
+  // Restore saved Apps Script URL
+  const savedUrl = localStorage.getItem("sheets-url");
+  if (savedUrl) document.getElementById("sheets-url").value = savedUrl;
+  document.getElementById("sheets-url").addEventListener("input", e => {
+    localStorage.setItem("sheets-url", e.target.value.trim());
+  });
+
   const badgeCls = {
     "DataCenterDynamics":  "b-dcd",
     "DataCenterKnowledge": "b-dck",
