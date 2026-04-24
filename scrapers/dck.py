@@ -11,7 +11,7 @@ import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
 
-from utils.filters import is_within_days
+from utils.filters import is_within_days, detect_region
 
 RSS_URL = "https://www.datacenterknowledge.com/rss.xml"
 
@@ -71,6 +71,7 @@ def scrape_dck() -> list[dict]:
                 "Title": title,
                 "Date": date_str,
                 "Source": "DataCenterKnowledge",
+                "Region": detect_region(title) or "",
                 "URL": url,
             })
 

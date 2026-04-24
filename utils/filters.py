@@ -1,5 +1,5 @@
 """
-Filtering utilities: date filter and DCD region filter.
+Filtering utilities: date filter and region detection (all sources).
 """
 
 from datetime import datetime, timedelta, timezone
@@ -18,7 +18,7 @@ def is_within_days(date_str: str, days: int = 5) -> bool:
 
 
 # Keywords used to detect region from article title.
-# Applied ONLY to DataCenterDynamics articles.
+# Applied to ALL sources via keyword matching on the title.
 REGION_KEYWORDS = {
     "North America": [
         "us ", "u.s.", "usa", "united states", "american", "america",

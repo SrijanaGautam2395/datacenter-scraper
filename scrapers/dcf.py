@@ -16,7 +16,7 @@ import requests
 from bs4 import BeautifulSoup
 from dateutil import parser as dateparser
 
-from utils.filters import is_within_days
+from utils.filters import is_within_days, detect_region
 
 SITEMAP_URL = "https://www.datacenterfrontier.com/sitemap/Article.xml"
 
@@ -154,6 +154,7 @@ def scrape_dcf() -> list[dict]:
             "Title": details["title"],
             "Date": details["date"],
             "Source": "DataCenterFrontier",
+            "Region": detect_region(details["title"]) or "",
             "URL": details["url"],
         })
 

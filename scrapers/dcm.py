@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 import requests
 from bs4 import BeautifulSoup
 
-from utils.filters import is_within_days
+from utils.filters import is_within_days, detect_region
 
 NEWS_URL = "https://datacentremagazine.com/news"
 BASE_URL = "https://datacentremagazine.com"
@@ -118,6 +118,7 @@ def scrape_dcm() -> list[dict]:
                 "Title": headline,
                 "Date": date_str,
                 "Source": "DataCentre Magazine",
+                "Region": detect_region(headline) or "",
                 "URL": url,
             })
 

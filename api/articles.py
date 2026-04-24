@@ -58,7 +58,7 @@ def _run_scrapers(sources, days=5, keyword="", region=""):
     if keyword:
         unique = [a for a in unique if keyword.lower() in a["Title"].lower()]
     if region:
-        unique = [a for a in unique if a.get("Region", "") == region or a.get("Source") != "DataCenterDynamics"]
+        unique = [a for a in unique if a.get("Region", "") == region]
 
     unique.sort(key=lambda x: x["Date"], reverse=True)
     return unique, errors
