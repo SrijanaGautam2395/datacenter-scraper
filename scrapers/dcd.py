@@ -55,9 +55,6 @@ def _parse_dcd_page(html: str, days: int) -> list[dict]:
     soup = BeautifulSoup(html, "lxml")
     cards = soup.find_all("article", class_="card")
 
-    soup = BeautifulSoup(response.text, "lxml")
-    cards = soup.find_all("article", class_="card")
-
     for card in cards:
         try:
             # Title
