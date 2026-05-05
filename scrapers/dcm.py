@@ -56,11 +56,10 @@ def _extract_articles_from_layout(layout: list) -> list[dict]:
     return articles
 
 
-def scrape_dcm() -> list[dict]:
+def scrape_dcm(days: int = 5) -> list[dict]:
     """
     Scrape DataCentre Magazine via __NEXT_DATA__ on the /news page.
     Returns list of dicts: {Title, Date, Source, URL}.
-    Applies: 5-day date filter.
     """
     results = []
     try:
@@ -112,7 +111,7 @@ def scrape_dcm() -> list[dict]:
             date_str = _objectid_to_date(oid)
 
             # Apply date filter
-            if not is_within_days(date_str):
+            if not is_within_days(date_str, days):
                 continue
 
             results.append({

@@ -29,19 +29,31 @@ HEADERS = {
 }
 
 
-def scrape_dcd() -> list[dict]:
+def scrape_dcd(days: int = 5) -> list[dict]:
     """
-    Scrape DataCenterDynamics news listing.
+    Scrape DataCenterDynamics news listing (multiple pages).
     Returns list of dicts: {Title, Date, Source, URL}.
-    Applies: 5-day date filter + region filter.
     """
     results = []
-    try:
-        response = requests.get(LISTING_URL, headers=HEADERS, timeout=20)
-        response.raise_for_status()
-    except Exception as e:
-        print(f"  [DCD] Failed to fetch listing: {e}")
-        return results
+    # Scrape multiple pages to get older articles
+    max_pages = 3 if days > 7 else 2 if days > 3 else 1
+    for page in range(1, max_pages + 1):
+        page_url = f"{LISTING_URL}?page={page}" if page > 1 else LISTING_URL
+        try:
+            response = requests.get(page_url, headers=HEADERS, timeout=20)
+            response.raise_for_status()
+        except Exception as e:
+            print(f"  [DCD] Failed to fetch page {page}: {e}")
+            break
+        results.extend(_parse_dcd_page(response.text, days))
+    return results
+
+
+def _parse_dcd_page(html: str, days: int) -> list[dict]:
+    """Parse a single DCD listing page."""
+    results = []
+    soup = BeautifulSoup(html, "lxml")
+    cards = soup.find_all("article", class_="card")
 
     soup = BeautifulSoup(response.text, "lxml")
     cards = soup.find_all("article", class_="card")
@@ -70,7 +82,7 @@ def scrape_dcd() -> list[dict]:
                 date_str = "N/A"
 
             # Apply date filter
-            if not is_within_days(date_str):
+            if not is_within_days(date_str, days):
                 continue
 
             # Detect region from title + URL slug

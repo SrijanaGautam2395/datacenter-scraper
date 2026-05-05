@@ -40,7 +40,7 @@ def _run_scrapers(sources, days=5, keyword="", region=""):
     errors = []
 
     with ThreadPoolExecutor(max_workers=4) as executor:
-        futures = {executor.submit(SOURCE_MAP[k]): k for k in sources if k in SOURCE_MAP}
+        futures = {executor.submit(SOURCE_MAP[k], days): k for k in sources if k in SOURCE_MAP}
         for future in as_completed(futures):
             key = futures[future]
             try:

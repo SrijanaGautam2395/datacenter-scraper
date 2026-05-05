@@ -137,15 +137,14 @@ def _fetch_article_details(url: str) -> dict | None:
     return None
 
 
-def scrape_dcf() -> list[dict]:
+def scrape_dcf(days: int = 5) -> list[dict]:
     """
     Scrape DataCenterFrontier via article sitemap + individual article pages.
     Returns list of dicts: {Title, Date, Source, URL}.
-    Applies: 5-day date filter.
     """
     results = []
 
-    candidate_urls = _parse_sitemap_articles(days=5)
+    candidate_urls = _parse_sitemap_articles(days=days)
     print(f"  [DCF] {len(candidate_urls)} recent articles found in sitemap")
 
     for url in candidate_urls:
@@ -154,7 +153,7 @@ def scrape_dcf() -> list[dict]:
             continue
 
         # Double-check with published date (sitemap lastmod might differ slightly)
-        if not is_within_days(details["date"]):
+        if not is_within_days(details["date"], days):
             continue
 
         results.append({

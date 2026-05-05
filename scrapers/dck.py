@@ -24,11 +24,10 @@ HEADERS = {
 }
 
 
-def scrape_dck() -> list[dict]:
+def scrape_dck(days: int = 5) -> list[dict]:
     """
     Scrape DataCenterKnowledge via RSS feed.
     Returns list of dicts: {Title, Date, Source, URL}.
-    Applies: 5-day date filter.
     """
     results = []
     try:
@@ -66,7 +65,7 @@ def scrape_dck() -> list[dict]:
                 date_str = "N/A"
 
             # Apply date filter
-            if not is_within_days(date_str):
+            if not is_within_days(date_str, days):
                 continue
 
             results.append({
